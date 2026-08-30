@@ -65,7 +65,8 @@ reliable bundled USB/serial dependencies.
 
 ### One-click Windows build
 
-Install Python 3.14 on the Windows computer, copy or clone this project, then
+Install Python 3.10–3.14 on the Windows computer (Python 3.12 is recommended),
+copy or clone the complete project, then
 double-click `build_windows.bat`. It creates an isolated Windows build
 environment, installs the dependencies, builds `AeroStudio.exe`, and produces
 the distributable `dist/AeroStudio-Windows.zip`. Send the ZIP, not the EXE by
@@ -73,7 +74,8 @@ itself, because the executable needs the adjacent `_internal` folder.
 
 ### Manual or macOS build
 
-On either platform, create and activate a Python 3.14 virtual environment, then
+On either platform, create and activate a Python 3.10–3.14 virtual environment,
+then
 run:
 
 ```bash
@@ -86,11 +88,9 @@ Build outputs appear in `dist/`:
 - macOS: `AeroStudio.app`
 - Windows: `AeroStudio/AeroStudio.exe`
 
-The workflow in `.github/workflows/build-desktop.yml` performs both native
-builds when run manually or when a `v*` tag is pushed, and uploads ZIP files as
-workflow artifacts. The generated macOS bundle is locally/ad-hoc signed for
-testing. Public distribution still requires signing with an Apple Developer ID
-and notarisation; public Windows distribution should likewise use a trusted
+The `.github/workflows/windows-build.yml` workflow builds Windows on a hosted
+Windows runner when run manually or when a `v*` tag is pushed. Download its ZIP
+from the workflow artifact. Public Windows distribution should use a trusted
 code-signing certificate to avoid security warnings.
 
 ## Safety

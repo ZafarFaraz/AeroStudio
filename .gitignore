@@ -31,6 +31,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+!packaging/AeroStudio.spec
 
 # Installer logs
 pip-log.txt
@@ -135,6 +136,13 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv-windows/
+
+# Local workspace and generated teaching artifacts
+.DS_Store
+output/
+tmp/
+node_modules/
 
 # Spyder project settings
 .spyderproject

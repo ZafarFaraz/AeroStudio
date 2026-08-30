@@ -9,17 +9,25 @@ echo             AeroStudio Windows Builder
 echo ==================================================
 echo.
 
+if not exist "packaging\AeroStudio.spec" goto :project_incomplete
+if not exist "tools\build_app.py" goto :project_incomplete
+if not exist "requirements-build.txt" goto :project_incomplete
+
 set "PYTHON_CMD="
 where py >nul 2>nul
 if not errorlevel 1 (
-    py -3.14 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 14) else 1)" >nul 2>nul
-    if not errorlevel 1 set "PYTHON_CMD=py -3.14"
+    for %%V in (3.12 3.13 3.14 3.11 3.10) do (
+        if not defined PYTHON_CMD (
+            py -%%V -c "import sys; raise SystemExit(0 if (3, 10) le sys.version_info[:2] le (3, 14) else 1)" >nul 2>nul
+            if not errorlevel 1 set "PYTHON_CMD=py -%%V"
+        )
+    )
 )
 
 if not defined PYTHON_CMD (
     where python >nul 2>nul
     if not errorlevel 1 (
-        python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 14) else 1)" >nul 2>nul
+        python -c "import sys; raise SystemExit(0 if (3, 10) le sys.version_info[:2] le (3, 14) else 1)" >nul 2>nul
         if not errorlevel 1 set "PYTHON_CMD=python"
     )
 )
@@ -60,16 +68,26 @@ echo.
 echo File to distribute:
 echo   %CD%\dist\AeroStudio-Windows.zip
 echo.
-pause
+if not defined CI pause
 exit /b 0
 
 :python_missing
 echo.
-echo Python 3.14 was not found.
-echo Install Python 3.14 from https://www.python.org/downloads/windows/
+echo A supported Python version was not found.
+echo Install Python 3.12 from https://www.python.org/downloads/windows/
 echo During installation, select "Add Python to PATH", then run this file again.
 echo.
-pause
+if not defined CI pause
+exit /b 1
+
+:project_incomplete
+echo.
+echo This project copy is incomplete.
+echo The builder needs packaging\AeroStudio.spec, tools\build_app.py,
+echo and requirements-build.txt in the same AeroStudio project folder.
+echo Download or clone the complete repository, then run this file from there.
+echo.
+if not defined CI pause
 exit /b 1
 
 :failed
@@ -77,5 +95,5 @@ echo.
 echo The build stopped because one of the steps failed.
 echo Read the message above, fix the problem, then run build_windows.bat again.
 echo.
-pause
+if not defined CI pause
 exit /b 1
