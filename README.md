@@ -89,9 +89,16 @@ Build outputs appear in `dist/`:
 - Windows: `AeroStudio/AeroStudio.exe`
 
 The `.github/workflows/windows-build.yml` workflow builds Windows on a hosted
-Windows runner when run manually or when a `v*` tag is pushed. Download its ZIP
-from the workflow artifact. Public Windows distribution should use a trusted
-code-signing certificate to avoid security warnings.
+Windows runner when run manually or when a `v*` tag is pushed. Its
+`AeroStudio-Windows` artifact contains:
+
+- `AeroStudio-Setup.exe`, a standard per-user Windows installer with Start Menu
+  and optional desktop shortcuts.
+- `AeroStudio-Windows.zip`, a portable build that can run without installation.
+
+Download the workflow artifact, unzip it, and distribute the setup executable.
+Public Windows distribution should use a trusted code-signing certificate to
+reduce Windows security warnings.
 
 ## Safety
 

@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - name: Check out source
@@ -32,10 +32,44 @@ jobs:
         shell: cmd
         run: .venv-windows\Scripts\python.exe -m unittest discover -s tests -v
 
-      - name: Upload Windows ZIP
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup compiler was not found on the GitHub runner."
+          }
+
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}" -replace '^v', ''
+          } else {
+            $version = "1.0.${{ github.run_number }}"
+          }
+
+          & $iscc "/DAppVersion=$version" "packaging\AeroStudio.iss"
+
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          $testInstall = Join-Path $env:RUNNER_TEMP "AeroStudio-install-test"
+          $arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$testInstall")
+          $process = Start-Process -FilePath "dist\AeroStudio-Setup.exe" -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Installer exited with code $($process.ExitCode)."
+          }
+          if (-not (Test-Path (Join-Path $testInstall "AeroStudio.exe"))) {
+            throw "The installed AeroStudio executable was not found."
+          }
+
+      - name: Upload Windows installer and portable ZIP
         uses: actions/upload-artifact@v4
         with:
           name: AeroStudio-Windows
-          path: dist/AeroStudio-Windows.zip
+          path: |
+            dist/AeroStudio-Setup.exe
+            dist/AeroStudio-Windows.zip
           if-no-files-found: error
           retention-days: 90
