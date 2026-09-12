@@ -18,7 +18,7 @@ where py >nul 2>nul
 if not errorlevel 1 (
     for %%V in (3.12 3.13 3.14 3.11 3.10) do (
         if not defined PYTHON_CMD (
-            py -%%V -c "import sys; raise SystemExit(0 if (3, 10) le sys.version_info[:2] le (3, 14) else 1)" >nul 2>nul
+            py -%%V -c "import sys; raise SystemExit(0 if sys.version_info[:2] in ((3, 10), (3, 11), (3, 12), (3, 13), (3, 14)) else 1)" >nul 2>nul
             if not errorlevel 1 set "PYTHON_CMD=py -%%V"
         )
     )
@@ -27,7 +27,7 @@ if not errorlevel 1 (
 if not defined PYTHON_CMD (
     where python >nul 2>nul
     if not errorlevel 1 (
-        python -c "import sys; raise SystemExit(0 if (3, 10) le sys.version_info[:2] le (3, 14) else 1)" >nul 2>nul
+        python -c "import sys; raise SystemExit(0 if sys.version_info[:2] in ((3, 10), (3, 11), (3, 12), (3, 13), (3, 14)) else 1)" >nul 2>nul
         if not errorlevel 1 set "PYTHON_CMD=python"
     )
 )
