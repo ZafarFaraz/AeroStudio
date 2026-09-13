@@ -5,11 +5,11 @@ DESCRIPTION = "Traces two small opposite loops to form a figure eight."
 
 
 def run(drone, log, should_stop) -> None:
-    airborne = False
+    takeoff_attempted = False
     try:
         log("Taking off...")
+        takeoff_attempted = True
         drone.takeoff()
-        airborne = True
         for loop_name, turn in (("Right loop", drone.turn_right), ("Left loop", drone.turn_left)):
             log(loop_name)
             for _ in range(4):
@@ -18,6 +18,6 @@ def run(drone, log, should_stop) -> None:
                 drone.move_forward(35, "cm", 0.45)
                 turn(90)
     finally:
-        if airborne and not should_stop():
+        if takeoff_attempted and not should_stop():
             log("Landing...")
             drone.land()

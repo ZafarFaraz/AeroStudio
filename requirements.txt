@@ -1,1 +1,7 @@
 codrone-edu==2.8
+colorama==0.4.6
+numpy==2.2.6; python_version == "3.10"
+numpy==2.3.3; python_version == "3.11"
+numpy==2.5.1; python_version >= "3.12"
+pillow==12.3.0
+pyserial==3.5

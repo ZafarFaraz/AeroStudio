@@ -5,11 +5,11 @@ DESCRIPTION = "Takes off, moves left 40 cm, right 40 cm, and lands."
 
 
 def run(drone, log, should_stop) -> None:
-    airborne = False
+    takeoff_attempted = False
     try:
         log("Taking off...")
+        takeoff_attempted = True
         drone.takeoff()
-        airborne = True
         if should_stop():
             return
         log("Moving left...")
@@ -19,6 +19,6 @@ def run(drone, log, should_stop) -> None:
         log("Moving right...")
         drone.move_right(40, "cm", 0.5)
     finally:
-        if airborne and not should_stop():
+        if takeoff_attempted and not should_stop():
             log("Landing...")
             drone.land()

@@ -44,6 +44,8 @@ Node = CommandNode | IfNode | LoopNode
 @dataclass
 class ExecutionResult:
     airborne: bool = False
+    takeoff_attempted: bool = False
+    takeoff_confirmed: bool = False
     stopped: bool = False
     command_steps: int = 0
 
@@ -206,9 +208,15 @@ def execute_program(
                 if block.execute is None:
                     raise BlockProgramError(f"{block.name} has no command")
                 log(f"Block {node.index + 1}: {block.name}")
+                if block.name == "Take off":
+                    # The aircraft may lift before the SDK reports an error, so
+                    # cleanup must treat the attempt itself as safety-relevant.
+                    result.takeoff_attempted = True
+                    result.takeoff_confirmed = False
                 block.execute(drone, log, should_stop)
                 if block.name == "Take off":
                     result.airborne = True
+                    result.takeoff_confirmed = True
                 elif block.name == "Land":
                     result.airborne = False
                 continue

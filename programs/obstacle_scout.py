@@ -5,11 +5,11 @@ DESCRIPTION = "Checks ahead, approaches open space or backs away from an obstacl
 
 
 def run(drone, log, should_stop) -> None:
-    airborne = False
+    takeoff_attempted = False
     try:
         log("Taking off...")
+        takeoff_attempted = True
         drone.takeoff()
-        airborne = True
         if should_stop():
             return
         distance = drone.get_front_range("cm")
@@ -23,6 +23,6 @@ def run(drone, log, should_stop) -> None:
         if not should_stop():
             drone.turn_right(180)
     finally:
-        if airborne and not should_stop():
+        if takeoff_attempted and not should_stop():
             log("Landing...")
             drone.land()

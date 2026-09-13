@@ -5,11 +5,11 @@ DESCRIPTION = "Flies a gentle four-leg zigzag, then lands."
 
 
 def run(drone, log, should_stop) -> None:
-    airborne = False
+    takeoff_attempted = False
     try:
         log("Taking off...")
+        takeoff_attempted = True
         drone.takeoff()
-        airborne = True
         turns = (45, -90, 90, -45)
         for leg, turn in enumerate(turns, start=1):
             if should_stop():
@@ -21,6 +21,6 @@ def run(drone, log, should_stop) -> None:
             else:
                 drone.turn_left(abs(turn))
     finally:
-        if airborne and not should_stop():
+        if takeoff_attempted and not should_stop():
             log("Landing...")
             drone.land()

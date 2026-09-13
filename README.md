@@ -10,9 +10,9 @@ supplied Muslims in Tech geometric mark with a quadcopter influence.
 The desktop interface follows the Apple design guidance stored in
 `.design-rules/`: a persistent sidebar, clear content/action separation,
 high-contrast layered surfaces, readable desktop typography, visible status
-feedback, and keyboard navigation. Press `Command–1` through `Command–4` to
-switch between the student sections on macOS. The unlocked Controller uses
-`Command–5`.
+feedback, and keyboard navigation. Press `Command–1` through `Command–5` on
+macOS, or `Control–1` through `Control–5` on Windows and Linux, to switch
+between sections (the Controller shortcut works after it is unlocked).
 
 The tabs are organised by difficulty:
 
@@ -65,7 +65,7 @@ reliable bundled USB/serial dependencies.
 
 ### One-click Windows build
 
-Install Python 3.10–3.14 on the Windows computer (Python 3.12 is recommended),
+Install Python 3.10.1–3.14 on the Windows computer (Python 3.12 is recommended),
 copy or clone the complete project, then
 double-click `build_windows.bat`. It creates an isolated Windows build
 environment, installs the dependencies, builds `AeroStudio.exe`, and produces
@@ -74,7 +74,7 @@ itself, because the executable needs the adjacent `_internal` folder.
 
 ### Manual or macOS build
 
-On either platform, create and activate a Python 3.10–3.14 virtual environment,
+On either platform, create and activate a Python 3.10.1–3.14 virtual environment,
 then
 run:
 

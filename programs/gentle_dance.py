@@ -5,11 +5,11 @@ DESCRIPTION = "Performs small side moves and turns while changing LED colours."
 
 
 def run(drone, log, should_stop) -> None:
-    airborne = False
+    takeoff_attempted = False
     try:
         log("Taking off...")
+        takeoff_attempted = True
         drone.takeoff()
-        airborne = True
         moves = (
             ("Blue left", (0, 80, 255), drone.move_left),
             ("Pink right", (255, 20, 120), drone.move_right),
@@ -24,7 +24,9 @@ def run(drone, log, should_stop) -> None:
             move(25, "cm", 0.4)
             drone.turn_right(45)
     finally:
-        if airborne and not should_stop():
-            drone.set_drone_LED(255, 255, 255, 100)
-            log("Landing...")
-            drone.land()
+        if takeoff_attempted and not should_stop():
+            try:
+                drone.set_drone_LED(255, 255, 255, 100)
+            finally:
+                log("Landing...")
+                drone.land()

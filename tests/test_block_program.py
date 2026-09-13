@@ -77,6 +77,7 @@ class BlockProgramTests(unittest.TestCase):
         result = execute_program(nodes, drone, lambda message: None, lambda: False)
         self.assertEqual(drone.actions, ["takeoff", "forward", "land"])
         self.assertFalse(result.airborne)
+        self.assertTrue(result.takeoff_confirmed)
 
     def test_repeat_behaves_like_three_iteration_for_loop(self) -> None:
         sequence = (
@@ -162,6 +163,28 @@ class BlockProgramTests(unittest.TestCase):
                 result,
             )
         self.assertTrue(result.airborne)
+
+    def test_failed_takeoff_is_still_marked_for_safety_cleanup(self) -> None:
+        sequence = (BLOCK["Take off"],)
+        drone = FakeDrone()
+
+        def incomplete_takeoff() -> None:
+            drone.actions.append("takeoff")
+            raise RuntimeError("telemetry lost after lift")
+
+        drone.takeoff = incomplete_takeoff  # type: ignore[method-assign]
+        result = ExecutionResult()
+        with self.assertRaisesRegex(RuntimeError, "telemetry lost"):
+            execute_program(
+                parse_program(sequence),
+                drone,
+                lambda message: None,
+                lambda: False,
+                result,
+            )
+        self.assertTrue(result.takeoff_attempted)
+        self.assertFalse(result.takeoff_confirmed)
+        self.assertFalse(result.airborne)
 
     def test_trick_requires_takeoff(self) -> None:
         with self.assertRaisesRegex(BlockProgramError, "movement needs Take off"):

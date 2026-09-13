@@ -5,11 +5,11 @@ DESCRIPTION = "Flies four 50 cm sides with right turns, then lands."
 
 
 def run(drone, log, should_stop) -> None:
-    airborne = False
+    takeoff_attempted = False
     try:
         log("Taking off...")
+        takeoff_attempted = True
         drone.takeoff()
-        airborne = True
         for side in range(1, 5):
             if should_stop():
                 return
@@ -19,6 +19,6 @@ def run(drone, log, should_stop) -> None:
                 return
             drone.turn_right(90)
     finally:
-        if airborne and not should_stop():
+        if takeoff_attempted and not should_stop():
             log("Landing...")
             drone.land()

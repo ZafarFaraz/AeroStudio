@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import queue
+import sys
 import threading
 import tkinter as tk
 from pathlib import Path
@@ -10,6 +11,7 @@ from tkinter import messagebox
 from typing import Callable
 
 from codrone_edu.drone import Drone
+from codrone_edu.system import ModeFlight
 
 from block_actions import BLOCK_ACTIONS, BLOCKS_BY_KIND, BlockAction
 from block_program import (
@@ -20,8 +22,18 @@ from block_program import (
     sequence_indents,
     validate_flight_safety,
 )
+from drone_runtime import (
+    DroneConnectionError,
+    connect_ready_drone,
+    send_emergency_stop,
+)
 from programs import ADVANCED_PROGRAMS, BASIC_PROGRAMS, SIMPLE_PROGRAMS, Program
 from safety import ObstacleDetected, SafetySensorError, protect
+
+
+CLICKABLE_CURSOR = "pointinghand" if sys.platform == "darwin" else "hand2"
+SHORTCUT_MODIFIER = "Command" if sys.platform == "darwin" else "Control"
+SHORTCUT_LABEL = "⌘" if sys.platform == "darwin" else "Ctrl+"
 
 
 class DarkButton(tk.Label):
@@ -36,7 +48,7 @@ class DarkButton(tk.Label):
     ) -> None:
         self.command = command
         options.setdefault("takefocus", 1)
-        options.setdefault("cursor", "pointinghand")
+        options.setdefault("cursor", CLICKABLE_CURSOR)
         options.setdefault("relief", "flat")
         options.setdefault("highlightthickness", 1)
         options.setdefault("highlightcolor", "#35d2e8")
@@ -119,7 +131,7 @@ class ProgramCard(tk.Frame):
 
     def set_state(self, state: str) -> None:
         self.enabled = state != "disabled"
-        cursor = "pointinghand" if self.enabled else "arrow"
+        cursor = CLICKABLE_CURSOR if self.enabled else "arrow"
         for widget in self.bound_widgets:
             try:
                 widget.configure(cursor=cursor)
@@ -610,7 +622,7 @@ class AeroStudioApp:
         self.tab_buttons[tab_name] = tab_button
         if shortcut is not None:
             self.root.bind(
-                f"<Command-Key-{shortcut}>",
+                f"<{SHORTCUT_MODIFIER}-Key-{shortcut}>",
                 lambda event, selected=tab_name: self._show_tab(selected),
             )
         return tab_button
@@ -1127,10 +1139,10 @@ class AeroStudioApp:
         self.block_listbox.grid(row=0, column=0, sticky="nsew")
         self.block_listbox.bind("<Delete>", lambda event: self._remove_selected_block())
         self.block_listbox.bind(
-            "<Command-Up>", lambda event: self._move_selected_block(-1)
+            f"<{SHORTCUT_MODIFIER}-Up>", lambda event: self._move_selected_block(-1)
         )
         self.block_listbox.bind(
-            "<Command-Down>", lambda event: self._move_selected_block(1)
+            f"<{SHORTCUT_MODIFIER}-Down>", lambda event: self._move_selected_block(1)
         )
 
         self.block_empty_label = tk.Label(
@@ -1145,8 +1157,8 @@ class AeroStudioApp:
 
         controls = (
             ("Remove", self._remove_selected_block),
-            ("Move up  ⌘↑", lambda: self._move_selected_block(-1)),
-            ("Move down  ⌘↓", lambda: self._move_selected_block(1)),
+            (f"Move up  {SHORTCUT_LABEL}↑", lambda: self._move_selected_block(-1)),
+            (f"Move down  {SHORTCUT_LABEL}↓", lambda: self._move_selected_block(1)),
             ("Clear", self._clear_blocks),
         )
         control_bar = tk.Frame(stack, bg=self.CARD)
@@ -1184,7 +1196,10 @@ class AeroStudioApp:
         )
         self.block_run_button.grid(row=5, column=0, sticky="ew", pady=(10, 0))
         self._add_hover(self.block_run_button, self.BLUE, self.BLUE_HOVER)
-        self.root.bind("<Command-Return>", lambda event: self._run_block_program())
+        self.root.bind(
+            f"<{SHORTCUT_MODIFIER}-Return>",
+            lambda event: self._run_block_program(),
+        )
         self._refresh_block_list()
 
         builder_layout = {"stacked": None}
@@ -1457,7 +1472,10 @@ class AeroStudioApp:
             except Exception as error:
                 self.events.put(("error", f"Block sequence stopped: {error}"))
             finally:
-                if result.airborne and not self.stop_requested.is_set():
+                landing_needed = result.airborne or (
+                    result.takeoff_attempted and not result.takeoff_confirmed
+                )
+                if landing_needed and not self.stop_requested.is_set():
                     try:
                         self.events.put(("log", "Auto landing for safety..."))
                         drone.land()
@@ -1549,25 +1567,24 @@ class AeroStudioApp:
         self._write_log("Connecting...")
 
         def work() -> None:
-            drone: Drone | None = None
+            connected = False
             try:
-                drone = Drone()
-                drone.pair()
+                drone = connect_ready_drone(Drone, ModeFlight.Ready)
                 self.events.put(("connected", drone))
-            except Exception as error:
-                if drone is not None:
-                    try:
-                        drone.close()
-                    except Exception:
-                        pass
+                connected = True
+            except DroneConnectionError:
                 self.events.put(
                     (
                         "error",
-                        "Couldn’t connect. Check that the controller is powered on "
-                        "and connected with a USB data cable, then try again.",
+                        "Couldn’t connect. Check the USB data cable, turn on the "
+                        "controller and drone, confirm they are paired, then try again.",
                     )
                 )
-                self.events.put(("idle", None))
+            finally:
+                if not connected:
+                    # The SDK uses SystemExit for ordinary connection failures.
+                    # Always return the UI to an actionable state.
+                    self.events.put(("idle", None))
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -1582,7 +1599,7 @@ class AeroStudioApp:
         def work() -> None:
             try:
                 drone.close()
-            except Exception:
+            except (Exception, SystemExit):
                 self.events.put(
                     (
                         "error",
@@ -1673,13 +1690,14 @@ class AeroStudioApp:
         if not self.connected or self.drone is None:
             return
         self.stop_requested.set()
-        self._write_log("Emergency stop sent.")
+        self._write_log("Sending emergency stop...")
         drone = self.drone
 
         def work() -> None:
             try:
                 drone.emergency_stop()
-            except Exception as error:
+                self.events.put(("log", "Emergency stop sent."))
+            except (Exception, SystemExit) as error:
                 self.events.put(
                     (
                         "error",
@@ -1854,6 +1872,7 @@ class AeroStudioApp:
         self.status_dot.configure(fg=color)
 
     def _on_close(self) -> None:
+        send_stop = False
         if self.busy and self.connected:
             should_close = messagebox.askyesno(
                 "Close AeroStudio?",
@@ -1861,11 +1880,21 @@ class AeroStudioApp:
             )
             if not should_close:
                 return
-            self._emergency_stop()
+            self.stop_requested.set()
+            send_stop = True
 
         if self.drone is not None:
+            if send_stop:
+                stop_result = send_emergency_stop(self.drone)
+                if not stop_result.completed or stop_result.error is not None:
+                    messagebox.showwarning(
+                        "Emergency stop not confirmed",
+                        "AeroStudio could not confirm the emergency stop. Keep clear "
+                        "of the drone and use the physical controller.",
+                        parent=self.root,
+                    )
             try:
                 self.drone.close()
-            except Exception:
+            except (Exception, SystemExit):
                 pass
         self.root.destroy()

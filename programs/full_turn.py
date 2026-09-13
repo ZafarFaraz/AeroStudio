@@ -5,16 +5,16 @@ DESCRIPTION = "Takes off, turns right 360 degrees, and lands."
 
 
 def run(drone, log, should_stop) -> None:
-    airborne = False
+    takeoff_attempted = False
     try:
         log("Taking off...")
+        takeoff_attempted = True
         drone.takeoff()
-        airborne = True
         if should_stop():
             return
         log("Turning 360 degrees...")
         drone.turn_right(360)
     finally:
-        if airborne and not should_stop():
+        if takeoff_attempted and not should_stop():
             log("Landing...")
             drone.land()

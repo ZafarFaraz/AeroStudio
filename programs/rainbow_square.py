@@ -5,7 +5,7 @@ DESCRIPTION = "Flies a colourful square, changing LED colour on every side."
 
 
 def run(drone, log, should_stop) -> None:
-    airborne = False
+    takeoff_attempted = False
     colors = (
         ("Red", 255, 0, 0),
         ("Green", 0, 255, 0),
@@ -14,8 +14,8 @@ def run(drone, log, should_stop) -> None:
     )
     try:
         log("Taking off...")
+        takeoff_attempted = True
         drone.takeoff()
-        airborne = True
         for side, (name, red, green, blue) in enumerate(colors, start=1):
             if should_stop():
                 return
@@ -24,7 +24,9 @@ def run(drone, log, should_stop) -> None:
             drone.move_forward(45, "cm", 0.45)
             drone.turn_right(90)
     finally:
-        if airborne and not should_stop():
-            drone.set_drone_LED(255, 255, 255, 100)
-            log("Landing...")
-            drone.land()
+        if takeoff_attempted and not should_stop():
+            try:
+                drone.set_drone_LED(255, 255, 255, 100)
+            finally:
+                log("Landing...")
+                drone.land()
