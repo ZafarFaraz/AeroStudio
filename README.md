@@ -1,135 +1,108 @@
-# AeroStudio
+# AeroStudio Web
 
-AeroStudio is the desktop learning app for the Drone Incursions program and is
-compatible with CoDrone EDU. It contains 18 ready-made programs, an advanced
-manual controller, and a visual block-programming builder. Every ready-made
-program lives in its own file under `programs/` and includes a short
-description. The cyan-and-teal visual identity and app icon combine the
-supplied Muslims in Tech geometric mark with a quadcopter influence.
+AeroStudio is a browser-based CoDrone EDU learning environment for managed
+classroom laptops. Students open one HTTPS URL, connect the controller through
+the browser, and use 18 ready-made programs, a visual Block Builder, and
+teacher-unlocked manual controls without installing an executable.
 
-The desktop interface follows the Apple design guidance stored in
-`.design-rules/`: a persistent sidebar, clear content/action separation,
-high-contrast layered surfaces, readable desktop typography, visible status
-feedback, and keyboard navigation. Press `Command–1` through `Command–5` on
-macOS, or `Control–1` through `Control–5` on Windows and Linux, to switch
-between sections (the Controller shortcut works after it is unlocked).
+The web application preserves AeroStudio's safety model:
 
-The tabs are organised by difficulty:
+- forward movement checks the front range sensor before moving;
+- the required clearance includes a 35 cm braking buffer;
+- block programs are capped at 100 command steps;
+- `while` blocks stop after five repeats;
+- flights and valid block sequences land automatically; and
+- **Stop now** remains available whenever a controller is connected.
 
-- **Basic** contains six grounded battery, sensor, light, temperature,
-  orientation, and colour checks.
-- **Simple** contains six beginner flights, including a triangle, zigzag, and
-  gentle light dance.
-- **Advanced** contains six larger routines, including a figure eight,
-  obstacle-aware scout, and rainbow square.
-- **Controller** provides advanced takeoff, landing, movement, height, turn,
-  and hover controls. It is hidden by default; pressing the
-  **AeroStudio** title five times reveals it until the app closes.
-- **Block Builder** groups 29 drone commands and seven control blocks into
-  Flight, Movement, Lights, Sensors & timing, Tricks & paths, and Logic & loops
-  palettes. The tricks palette includes four flip directions, a 360° turn,
-  square, triangle, zigzag, circle, figure-eight, and rainbow-square paths.
-  Logic blocks introduce Python-style `if` / `else`, `for`, and `while` structures.
-  Opening blocks automatically add their matching end marker, and selected
-  blocks become the insertion point for nested commands. The sequence view
-  displays indentation and equivalent Python expressions. Inline checks catch
-  malformed structures, movement before takeoff, and unsafe flight paths. For
-  safety, `while` loops stop after at most five repeats and the app
-  automatically lands if a valid sequence ends in the air.
+## Student requirements
 
-## Start the app
+- Google Chrome or Microsoft Edge on Windows, macOS, Linux, or ChromeOS.
+- A CoDrone EDU controller connected with a USB data cable.
+- Browser permission to access the controller's serial port.
+- Access to the hosted AeroStudio URL, `cdn.jsdelivr.net`, and `pypi.org`.
 
-1. Connect the CoDrone EDU controller to the computer with its USB data cable.
-2. Turn on the controller and drone.
-3. From this folder, run:
+On the first hardware connection, the browser downloads Pyodide and
+`codrone-edu==2.8`, then asks the student to select the CoDrone controller.
+Drone commands and sensor data stay between the browser and the attached USB
+controller. **Practice** runs a local simulator when hardware is unavailable.
 
-   ```bash
-   source venv/bin/activate
-   python main.py
-   ```
+Safari and Firefox do not currently provide the Web Serial API required by the
+controller.
 
-4. Select **Connect** in the app. Once connected, choose one program.
+## School IT setup
 
-Program cards, controller controls, and the block sequence stay disabled until
-a drone is connected. Select anywhere on a ready-made program card to run it;
-each card includes a small pictogram describing its check or flight path.
-Connection and flight failures appear in a dismissible recovery banner and in
-the student-friendly Flight updates panel.
+The hosted site must be served over HTTPS. Allow the Firebase origin and USB
+serial access in the managed browser. Chrome administrators may use
+`SerialAllowAllPortsForUrls` for the exact AeroStudio origin; otherwise each
+student chooses the controller in Chrome's permission prompt.
 
-## Build desktop apps
+Before a class, verify this path on one managed student device:
 
-PyInstaller produces a native app for the operating system on which it runs, so
-macOS and Windows must be built separately. The project uses an unpacked app
-folder rather than a single-file executable for faster startup and more
-reliable bundled USB/serial dependencies.
+1. Open AeroStudio in Chrome.
+2. Connect the controller and powered-on drone.
+3. Choose **Connect**, then select the CoDrone EDU controller.
+4. Run **Battery Check**.
+5. Run **LED Colors**.
+6. Verify **Stop now** sends an emergency stop.
 
-### One-click Windows build
+## Local development
 
-Install Python 3.10.1–3.14 on the Windows computer (Python 3.12 is recommended),
-copy or clone the complete project, then
-double-click `build_windows.bat`. It creates an isolated Windows build
-environment, installs the dependencies, builds `AeroStudio.exe`, and produces
-the distributable `dist/AeroStudio-Windows.zip`. Send the ZIP, not the EXE by
-itself, because the executable needs the adjacent `_internal` folder.
-
-### Manual or macOS build
-
-On either platform, create and activate a Python 3.10.1–3.14 virtual environment,
-then
-run:
+Requires Node.js 20 or newer.
 
 ```bash
-python -m pip install -r requirements-build.txt
-python tools/build_app.py
+npm install
+npm run dev
 ```
 
-Build outputs appear in `dist/`:
+Open `http://127.0.0.1:4173`. Localhost is treated as a secure browser context,
+so Web Serial can be tested locally in Chrome.
 
-- macOS: `AeroStudio.app`
-- Windows: `AeroStudio/AeroStudio.exe`
+Build the production assets with:
 
-The `.github/workflows/windows-build.yml` workflow builds Windows on a hosted
-Windows runner when run manually or when a `v*` tag is pushed. Its
-`AeroStudio-Windows` artifact contains:
+```bash
+npm run build
+```
 
-- `AeroStudio-Setup.exe`, a standard per-user Windows installer with Start Menu
-  and optional desktop shortcuts.
-- `AeroStudio-Windows.zip`, a portable build that can run without installation.
+## Firebase Hosting
 
-Download the workflow artifact, unzip it, and distribute the setup executable.
-Public Windows distribution should use a trusted code-signing certificate to
-reduce Windows security warnings.
+This branch includes `firebase.json` with SPA routing, security headers,
+long-lived hashed-asset caching, and a same-origin Web Serial permissions
+policy. It intentionally does not include `.firebaserc`; select the correct
+school or personal Firebase project explicitly.
 
-## Safety
+```bash
+npx firebase login
+npx firebase use --add
+npm run build
+npx firebase deploy --only hosting
+```
 
-All ready-made programs, controller moves, and Block Builder flights use the
-same obstacle-braking layer. Before forward movement, AeroStudio checks that the
-travel distance plus a 35 cm buffer is clear. If the path is blocked, the drone
-hovers, stops the routine, lands when possible, and shows an obstacle warning.
-
-The CoDrone EDU has one forward-facing obstacle sensor, so it cannot inspect
-left, right, backward, or upward paths. These controls always retain their
-literal movement behaviour and never rotate the drone for a hidden sensor check.
-Always use a clear indoor flight area and keep the physical controller ready.
-
-- Fly indoors in a clear area and keep people away from the propellers.
-- Begin with **Battery Check**, **Sensor Check**, and **LED Colors**.
-- Keep the controller accessible during every flight.
-- Use the red **EMERGENCY STOP** button if the drone behaves unexpectedly.
-- The flip program needs substantially more clear space than the other programs.
+Firebase publishes the app to `https://PROJECT_ID.web.app` and
+`https://PROJECT_ID.firebaseapp.com`. Add a custom domain from the Firebase
+console if the school prefers an allow-listed institutional address.
 
 ## Project layout
 
-- `main.py` launches the dashboard.
-- `app.py` contains the interface, connection management, and Flight updates UI.
-- `safety.py` applies shared directional obstacle checks and braking.
-- `block_actions.py` defines the visual programming blocks.
-- `block_program.py` parses, validates, and safely executes nested control
-  structures from the Block Builder.
-- `assets/codrone_studio_icon.png` is the full-resolution app icon.
-- `assets/codrone_studio_icon_96.png` is the toolbar-sized icon source.
-- `assets/program_icons/` contains the 18 descriptive program-card PNGs.
-- `programs/` contains one file for each of the 18 ready-made programs.
-- `requirements.txt` records the tested CoDrone EDU library version.
-- `requirements-build.txt`, `packaging/`, and `tools/build_app.py` define the
-  reproducible Windows/macOS packaging process.
+- `src/App.tsx` contains the classroom interface and connection lifecycle.
+- `src/drone/serial-manager.ts` provides Web Serial at 57,600 baud.
+- `src/drone/pyodide-driver.ts` loads the official CoDrone Python package.
+- `src/drone/mock-driver.ts` powers local Practice mode.
+- `src/data/programs.ts` defines the 18 ready-made student programs.
+- `src/data/blocks.ts` defines, validates, and executes Block Builder programs.
+- `firebase.json` configures production hosting.
+- `assets/` contains the existing identity and program illustrations.
+
+The former Python desktop sources remain as implementation and safety
+references while the browser port is validated with classroom hardware.
+
+## Safety
+
+Fly indoors in a clear area and keep people away from propellers. Keep the
+physical controller accessible during every flight. The CoDrone EDU has one
+forward-facing obstacle sensor, so AeroStudio cannot inspect left, right,
+backward, or upward paths without changing the requested movement. Those
+directions therefore retain their literal behavior.
+
+The backward-flip program requires at least 50% battery and substantially more
+clear space than other programs. Always test hardware behavior with an adult
+supervising the first flight after a deployment.
